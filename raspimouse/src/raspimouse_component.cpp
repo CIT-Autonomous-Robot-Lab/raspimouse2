@@ -327,8 +327,8 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 
   // ターミナルにIMUデータを表示
   RCLCPP_INFO(get_logger(), "Received IMU data:");
-  RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
-              msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+ // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
+             // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
   RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
               msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
   // 他のIMUデータも必要に応じて表示できます
