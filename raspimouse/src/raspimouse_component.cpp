@@ -25,6 +25,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rosidl_runtime_cpp/message_initialization.hpp"
 #include "lifecycle_msgs/msg/transition.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #define _USE_MATH_DEFINES
 
@@ -130,6 +131,13 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   // Subscriber for velocity commands
   velocity_sub_ = create_subscription<geometry_msgs::msg::Twist>(
     "cmd_vel", 10, std::bind(&Raspimouse::velocity_command, this, _1));
+
+  // Subscriber for imu data
+  imu_data_raw_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+    "imu/data_raw", 1,
+    [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+      imuDataCallback(msg);  // 受信したIMUデータをコールバック関数に渡す
+    });
 
   // Motor power control service
   power_service_ = create_service<std_srvs::srv::SetBool>(
@@ -307,6 +315,25 @@ CallbackReturn Raspimouse::on_shutdown(const rclcpp_lifecycle::State &)
   release_pointers();
 
   return CallbackReturn::SUCCESS;
+}
+
+void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
+{
+  if (!msg) {
+    // メッセージが受信されていない場合
+    RCLCPP_INFO(get_logger(), "IMU data not received.");
+    return;
+  }
+
+  // ターミナルにIMUデータを表示
+  RCLCPP_INFO(get_logger(), "Received IMU data:");
+  RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
+              msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+  RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
+              msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+  // 他のIMUデータも必要に応じて表示できます
+
+  // ここに必要な処理を追加することもできます
 }
 
 void Raspimouse::release_pointers()

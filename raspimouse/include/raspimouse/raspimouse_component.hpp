@@ -69,7 +69,7 @@ extern "C" {
 #include <raspimouse_msgs/msg/leds.hpp>
 #include <raspimouse_msgs/msg/switches.hpp>
 #include <raspimouse_msgs/msg/light_sensors.hpp>
-
+#include "sensor_msgs/msg/imu.hpp"
 
 namespace raspimouse
 {
@@ -97,6 +97,7 @@ private:
   int last_pulse_count_left_;
   int last_pulse_count_right_;
 
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_sub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr power_service_;
   rclcpp::TimerBase::SharedPtr watchdog_timer_;
@@ -149,6 +150,9 @@ private:
   void stop_motors();
   void calculate_odometry_from_pulse_counts(double & x, double & y, double & theta);
   void estimate_odometry(double & x, double & y, double & theta);
+
+  void imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg); //imu コールバック関数の宣言
+
 };
 
 }  // namespace raspimouse

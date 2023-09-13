@@ -21,6 +21,7 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(raspimouse_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 include_directories(include)
 
@@ -36,7 +37,8 @@ ament_target_dependencies(raspimouse_component
   nav_msgs
   tf2
   tf2_ros
-  raspimouse_msgs)
+  raspimouse_msgs
+  sensor_msgs)
 rclcpp_components_register_nodes(raspimouse_component "raspimouse::Raspimouse")
 
 add_executable(raspimouse src/raspimouse.cpp)
