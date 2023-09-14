@@ -67,7 +67,8 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   odom_theta_(0),
   use_pulse_counters_(false),
   last_pulse_count_left_(0),
-  last_pulse_count_right_(0)
+  last_pulse_count_right_(0),
+  theta_z(0)
 {
   // No construction necessary (node is uninitialised)
 }
@@ -334,6 +335,10 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
   // 他のIMUデータも必要に応じて表示できます
 
   // ここに必要な処理を追加することもできます
+  theta_z += msg->angular_velocity.z * 180 / M_PI /100;
+  RCLCPP_INFO(get_logger(), "deg ( z): %.2f", theta_z);
+
+
 }
 
 void Raspimouse::release_pointers()
@@ -606,6 +611,8 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
   RCLCPP_DEBUG(
     get_logger(), "Left dist: %f\tRight dist: %f\tAverage: %f",
     left_distance, right_distance, average_distance);
+
+  
 
   theta += atan2(right_distance - left_distance, WHEEL_TREAD);
   x += average_distance * cos(theta);

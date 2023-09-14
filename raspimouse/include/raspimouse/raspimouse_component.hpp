@@ -96,6 +96,7 @@ private:
   bool use_pulse_counters_;
   int last_pulse_count_left_;
   int last_pulse_count_right_;
+  float theta_z;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_sub_;
