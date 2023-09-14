@@ -69,6 +69,9 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   last_pulse_count_left_(0),
   last_pulse_count_right_(0),
   theta_z(0)
+  imu_i(0)
+  sum(0)
+  ave(0)
 {
   // No construction necessary (node is uninitialised)
 }
@@ -330,9 +333,16 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
   RCLCPP_INFO(get_logger(), "Received IMU data:");
  // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
              // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-  RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
-              msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+ // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
+             // msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+  RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.2f", msg->angular_velocity.z);
+
   // 他のIMUデータも必要に応じて表示できます
+  sum = sum + msg->angular_velocity.z;
+  imu_i++;
+  ave = sum / imu_i;
+
+  RCLCPP_INFO(get_logger(), "ave : %.2f", ave);
 
   // ここに必要な処理を追加することもできます
   theta_z += msg->angular_velocity.z * 180 / M_PI /100;
