@@ -68,9 +68,9 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   use_pulse_counters_(false),
   last_pulse_count_left_(0),
   last_pulse_count_right_(0),
-  theta_z(0)
-  imu_i(0)
-  sum(0)
+  theta_z(0),
+  imu_i(0),
+  sum(0),
   ave(0)
 {
   // No construction necessary (node is uninitialised)
@@ -335,19 +335,27 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
              // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
  // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
              // msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-  RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.2f", msg->angular_velocity.z);
+  RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
 
   // 他のIMUデータも必要に応じて表示できます
   sum = sum + msg->angular_velocity.z;
   imu_i++;
   ave = sum / imu_i;
 
-  RCLCPP_INFO(get_logger(), "ave : %.2f", ave);
+  RCLCPP_INFO(get_logger(), "ave : %.10f", ave);
 
   // ここに必要な処理を追加することもできます
+  msg->angular_velocity.z -= 0.0065267976;
+  if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
+	 msg->angular_velocity.z = 0;
+  } else {
+	  msg->angular_velocity.z = msg->angular_velocity.z;
+	 // RCLCPP_INFO(get_logger(), " 超えたz %.10f", msg->angular_velocity.z);
+  }
   theta_z += msg->angular_velocity.z * 180 / M_PI /100;
-  RCLCPP_INFO(get_logger(), "deg ( z): %.2f", theta_z);
-
+  RCLCPP_INFO(get_logger(), "deg ( z): %.10f", theta_z);
+  // theta_z *= -1;
+  // RCLCPP_INFO(get_logger(), "deg (z*-1): %.10f", theta_z);
 
 }
 
@@ -625,6 +633,7 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
   
 
   theta += atan2(right_distance - left_distance, WHEEL_TREAD);
+  // theta += theta_z;
   x += average_distance * cos(theta);
   y += average_distance * sin(theta);
 
