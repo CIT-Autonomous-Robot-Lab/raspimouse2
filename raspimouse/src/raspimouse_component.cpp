@@ -329,33 +329,39 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
     return;
   }
 
-  // ターミナルにIMUデータを表示
-  RCLCPP_INFO(get_logger(), "Received IMU data:");
+ // ターミナルにIMUデータを表示
+ // RCLCPP_INFO(get_logger(), "Received IMU data:");
  // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
              // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
  // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
              // msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-  RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
+ //yaw軸方向の角速度を出力 
+ // RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
 
   // 他のIMUデータも必要に応じて表示できます
   sum = sum + msg->angular_velocity.z;
   imu_i++;
   ave = sum / imu_i;
 
-  RCLCPP_INFO(get_logger(), "ave : %.10f", ave);
+ //angular_velocity.zの平均を出力
+ // RCLCPP_INFO(get_logger(), "ave : %.10f", ave);
 
   // ここに必要な処理を追加することもできます
   msg->angular_velocity.z -= 0.0065267976;
+  msg->angular_velocity.z = msg->angular_velocity.z * -1;
+
   if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
 	 msg->angular_velocity.z = 0;
   } else {
 	  msg->angular_velocity.z = msg->angular_velocity.z;
 	 // RCLCPP_INFO(get_logger(), " 超えたz %.10f", msg->angular_velocity.z);
   }
-  theta_z += msg->angular_velocity.z * 180 / M_PI /100;
-  RCLCPP_INFO(get_logger(), "deg ( z): %.10f", theta_z);
-  // theta_z *= -1;
-  // RCLCPP_INFO(get_logger(), "deg (z*-1): %.10f", theta_z);
+
+  theta_z += msg->angular_velocity.z /100;
+  // 角速度を角度に変換
+  // theta_z += msg->angular_velocity.z * 180 / M_PI /100;
+  //角度を出力
+  // RCLCPP_INFO(get_logger(), "deg ( z): %.10f", theta_z);
 
 }
 
@@ -391,6 +397,8 @@ void Raspimouse::publish_odometry()
     calculate_odometry_from_pulse_counts(
       odom_.pose.pose.position.x,
       odom_.pose.pose.position.y,
+      // Raspimouse のメンバ変数
+      // double & odom_theta_
       odom_theta_
     );
   } else {
@@ -402,6 +410,7 @@ void Raspimouse::publish_odometry()
   }
 
   tf2::Quaternion odom_q;
+  // RPY -> Quaternion
   odom_q.setRPY(0, 0, odom_theta_);
   odom_.pose.pose.orientation.x = odom_q.x();
   odom_.pose.pose.orientation.y = odom_q.y();
@@ -632,8 +641,9 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
 
   
 
-  theta += atan2(right_distance - left_distance, WHEEL_TREAD);
-  // theta += theta_z;
+  //theta += atan2(right_distance - left_distance, WHEEL_TREAD);
+
+  theta += theta_z;
   x += average_distance * cos(theta);
   y += average_distance * sin(theta);
 
