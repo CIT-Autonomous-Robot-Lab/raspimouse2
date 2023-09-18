@@ -64,6 +64,7 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   last_odom_time_(0),
   linear_velocity_(0),
   angular_velocity_(0),
+  angular_velocity_z_(0),	
   odom_theta_(0),
   use_pulse_counters_(false),
   last_pulse_count_left_(0),
@@ -71,7 +72,10 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   theta_z(0),
   imu_i(0),
   sum(0),
-  ave(0)
+  ave(0),
+  deg_z(0),
+  ave1(0),
+  i(0)	
 {
   // No construction necessary (node is uninitialised)
 }
@@ -342,26 +346,26 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
   sum = sum + msg->angular_velocity.z;
   imu_i++;
   ave = sum / imu_i;
-
  //angular_velocity.zの平均を出力
  // RCLCPP_INFO(get_logger(), "ave : %.10f", ave);
 
   // ここに必要な処理を追加することもできます
-  msg->angular_velocity.z -= 0.0065267976;
+  msg->angular_velocity.z -= 0.0035851384;
   msg->angular_velocity.z = msg->angular_velocity.z * -1;
 
   if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
 	 msg->angular_velocity.z = 0;
-  } else {
-	  msg->angular_velocity.z = msg->angular_velocity.z;
+  }// else {
+	//  msg->angular_velocity.z = msg->angular_velocity.z;
 	 // RCLCPP_INFO(get_logger(), " 超えたz %.10f", msg->angular_velocity.z);
-  }
-
+  //  }
+  angular_velocity_z_ = msg->angular_velocity.z;
   theta_z += msg->angular_velocity.z /100;
   // 角速度を角度に変換
-  // theta_z += msg->angular_velocity.z * 180 / M_PI /100;
+  //theta_z += msg->angular_velocity.z * 180 / M_PI /100;
+  deg_z += msg->angular_velocity.z * 180 / M_PI /100;
   //角度を出力
-  // RCLCPP_INFO(get_logger(), "deg ( z): %.10f", theta_z);
+  // RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
 
 }
 
@@ -418,6 +422,8 @@ void Raspimouse::publish_odometry()
   odom_.pose.pose.orientation.w = odom_q.w();
   odom_.twist.twist.linear.x = linear_velocity_;
   odom_.twist.twist.angular.z = angular_velocity_;
+  
+
   odom_.header.stamp = ros_clock_.now();
   odom_pub_->publish(odom_);
 
@@ -642,7 +648,6 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
   
 
   //theta += atan2(right_distance - left_distance, WHEEL_TREAD);
-
   theta += theta_z;
   x += average_distance * cos(theta);
   y += average_distance * sin(theta);
@@ -658,7 +663,9 @@ void Raspimouse::estimate_odometry(double & x, double & y, double & theta)
 
   x += linear_velocity_ * cos(theta) * dt.nanoseconds() / 1e9;
   y += linear_velocity_ * sin(theta) * dt.nanoseconds() / 1e9;
-  theta += angular_velocity_ * dt.nanoseconds() / 1e9;
+  // theta += angular_velocity_ * dt.nanoseconds() / 1e9;
+  theta += angular_velocity_z_ * dt.nanoseconds() / 1e9;
+
 }
 
 }  // namespace raspimouse

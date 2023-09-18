@@ -93,13 +93,17 @@ private:
   double linear_velocity_;
   double angular_velocity_;
   double odom_theta_;
-  bool use_pulse_counters_;
-  int last_pulse_count_left_;
-  int last_pulse_count_right_;
+  double angular_velocity_z_;
   float theta_z;
   double sum;
   int imu_i;
   double ave;
+  double ave1;
+  int i;
+  double deg_z;
+  bool use_pulse_counters_;
+  int last_pulse_count_left_;
+  int last_pulse_count_right_;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_sub_;
