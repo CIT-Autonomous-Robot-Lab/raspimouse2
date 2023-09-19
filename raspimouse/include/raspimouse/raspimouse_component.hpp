@@ -97,9 +97,8 @@ private:
   float theta_z;
   double sum;
   int imu_i;
-  double ave;
-  double ave1;
-  int i;
+  double angular_velocity_z_ave;
+  bool imuBiasCalibration;
   double deg_z;
   bool use_pulse_counters_;
   int last_pulse_count_left_;

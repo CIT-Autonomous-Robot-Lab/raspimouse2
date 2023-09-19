@@ -72,10 +72,9 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   theta_z(0),
   imu_i(0),
   sum(0),
-  ave(0),
   deg_z(0),
-  ave1(0),
-  i(0)	
+  angular_velocity_z_ave(0),
+  imuBiasCalibration(true)	
 {
   // No construction necessary (node is uninitialised)
 }
@@ -333,39 +332,40 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
     return;
   }
 
- // ターミナルにIMUデータを表示
- // RCLCPP_INFO(get_logger(), "Received IMU data:");
- // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
+  // ターミナルにIMUデータを表示
+  // RCLCPP_INFO(get_logger(), "Received IMU data:");
+  // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
              // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
- // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
+  // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
              // msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
- //yaw軸方向の角速度を出力 
- // RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
-
-  // 他のIMUデータも必要に応じて表示できます
+  //yaw軸方向の角速度を出力 
+  // RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
+  if (imuBiasCalibration) {
   sum = sum + msg->angular_velocity.z;
   imu_i++;
-  ave = sum / imu_i;
- //angular_velocity.zの平均を出力
- // RCLCPP_INFO(get_logger(), "ave : %.10f", ave);
+  angular_velocity_z_ave = sum / imu_i;
+  }
+
+  //angular_velocity.zの平均を出力
+  RCLCPP_INFO(get_logger(), "ave : %.10f", angular_velocity_z_ave);
 
   // ここに必要な処理を追加することもできます
-  msg->angular_velocity.z -= 0.0035851384;
+  msg->angular_velocity.z -= angular_velocity_z_ave;
   msg->angular_velocity.z = msg->angular_velocity.z * -1;
 
   if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
 	 msg->angular_velocity.z = 0;
-  }// else {
-	//  msg->angular_velocity.z = msg->angular_velocity.z;
-	 // RCLCPP_INFO(get_logger(), " 超えたz %.10f", msg->angular_velocity.z);
-  //  }
+  } else {
+	  imuBiasCalibration = false;
+    }
   angular_velocity_z_ = msg->angular_velocity.z;
+  // 角速度をras/sに変換
   theta_z += msg->angular_velocity.z /100;
   // 角速度を角度に変換
   //theta_z += msg->angular_velocity.z * 180 / M_PI /100;
   deg_z += msg->angular_velocity.z * 180 / M_PI /100;
   //角度を出力
-  // RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
+   RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
 
 }
 
