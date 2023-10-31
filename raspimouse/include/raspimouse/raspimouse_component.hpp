@@ -92,19 +92,20 @@ private:
   rclcpp::Time last_odom_time_;
   double linear_velocity_;
   double angular_velocity_;
-  double odom_theta_;
   double angular_velocity_z_;
-  float theta_z;
-  double sum;
-  int imu_i;
   double angular_velocity_z_ave;
-  bool imuBiasCalibration;
-  double deg_z;
+  double odom_theta_;
   bool use_pulse_counters_;
   int last_pulse_count_left_;
   int last_pulse_count_right_;
+  float theta_z;
+  int imu_i;
+  double sum;
+  double deg_z;
+  bool imuBiasCalibration;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
+
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_sub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr power_service_;
   rclcpp::TimerBase::SharedPtr watchdog_timer_;
@@ -143,6 +144,8 @@ private:
   void publish_odometry();
   void publish_switches();
   void publish_light_sensors();
+  void publish_c_angular_velocity_z();
+
 
   void velocity_command(const geometry_msgs::msg::Twist::SharedPtr msg);
   void leds_command(const raspimouse_msgs::msg::Leds::SharedPtr msg);

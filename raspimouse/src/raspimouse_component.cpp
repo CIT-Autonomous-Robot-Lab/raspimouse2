@@ -64,7 +64,8 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   last_odom_time_(0),
   linear_velocity_(0),
   angular_velocity_(0),
-  angular_velocity_z_(0),	
+  angular_velocity_z_(0),
+  angular_velocity_z_ave(0),	
   odom_theta_(0),
   use_pulse_counters_(false),
   last_pulse_count_left_(0),
@@ -73,7 +74,6 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   imu_i(0),
   sum(0),
   deg_z(0),
-  angular_velocity_z_ave(0),
   imuBiasCalibration(true)	
 {
   // No construction necessary (node is uninitialised)
@@ -127,6 +127,7 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   odom_transform_.transform.rotation.y = 0;
   odom_transform_.transform.rotation.z = 0;
   odom_transform_.transform.rotation.w = 0;
+  
   // Timer for providing the odometry data
   declare_parameter(ODOM_HZ_PARAM, 100.0);
   std::chrono::milliseconds odom_duration{static_cast<int64_t>(
@@ -143,7 +144,7 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   imu_data_raw_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
     "imu/data_raw", 1,
     [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
-      imuDataCallback(msg);  // 受信したIMUデータをコールバック関数に渡す
+      imuDataCallback(msg);
     });
 
   // Motor power control service
@@ -324,48 +325,43 @@ CallbackReturn Raspimouse::on_shutdown(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
+//imuDataCallback
 void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   if (!msg) {
-    // メッセージが受信されていない場合
     RCLCPP_INFO(get_logger(), "IMU data not received.");
     return;
   }
 
-  // ターミナルにIMUデータを表示
-  // RCLCPP_INFO(get_logger(), "Received IMU data:");
-  // RCLCPP_INFO(get_logger(), "Linear Acceleration (x, y, z): %.2f, %.2f, %.2f",
-             // msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-  // RCLCPP_INFO(get_logger(), "Angular Velocity (x, y, z): %.2f, %.2f, %.2f",
-             // msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
   //yaw軸方向の角速度を出力 
   // RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
   if (imuBiasCalibration) {
-  sum = sum + msg->angular_velocity.z;
-  imu_i++;
-  angular_velocity_z_ave = sum / imu_i;
+    sum = sum + msg->angular_velocity.z;
+    imu_i++;
+    angular_velocity_z_ave = sum / imu_i;
+    RCLCPP_INFO(get_logger(), "キャリブレーション中 %d : 1000", imu_i);
+    if(imu_i == 1000) {
+	    RCLCPP_INFO(get_logger(), "キャリブレーション終了");
+	    imuBiasCalibration = false;
+    }
   }
 
-  //angular_velocity.zの平均を出力
-  RCLCPP_INFO(get_logger(), "ave : %.10f", angular_velocity_z_ave);
+ msg->angular_velocity.z -= angular_velocity_z_ave;
+ msg->angular_velocity.z = msg->angular_velocity.z * -1;
+ //if(imu_i == 1000) {
+ //RCLCPP_INFO(get_logger(), "ave : %.10f", angular_velocity_z_ave);
+ //}
+ //RCLCPP_INFO(get_logger(), "msg->angular_velocity.z : %.10f", msg->angular_velocity.z);
 
-  // ここに必要な処理を追加することもできます
-  msg->angular_velocity.z -= angular_velocity_z_ave;
-  msg->angular_velocity.z = msg->angular_velocity.z * -1;
+	 // if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
+	      //msg->angular_velocity.z = 0;
+	      
+	  // } else {
+	//	  imuBiasCalibration = false;
+	 // }
 
-  if(msg->angular_velocity.z < 0.005 && msg->angular_velocity.z > - 0.005) {
-	 msg->angular_velocity.z = 0;
-  } else {
-	  imuBiasCalibration = false;
-    }
   angular_velocity_z_ = msg->angular_velocity.z;
-  // 角速度をras/sに変換
-  theta_z += msg->angular_velocity.z /100;
-  // 角速度を角度に変換
-  //theta_z += msg->angular_velocity.z * 180 / M_PI /100;
-  deg_z += msg->angular_velocity.z * 180 / M_PI /100;
-  //角度を出力
-   RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
+  //RCLCPP_INFO(get_logger(), "angular_velocity_z_ : %.10f", angular_velocity_z_);
 
 }
 
@@ -495,6 +491,7 @@ void Raspimouse::publish_light_sensors()
   sensor_values.forward_l;
   light_sensors_pub_->publish(sensor_values);
 }
+
 
 void Raspimouse::velocity_command(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
@@ -647,8 +644,10 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
 
   
 
-  //theta += atan2(right_distance - left_distance, WHEEL_TREAD);
-  theta += theta_z;
+  theta += atan2(right_distance - left_distance, WHEEL_TREAD);
+  //theta += theta_z;
+  //theta += angular_velocity_z_ /100;
+  RCLCPP_INFO(get_logger(), "distasce_deg ( z): %.10f", theta);
   x += average_distance * cos(theta);
   y += average_distance * sin(theta);
 
@@ -663,9 +662,12 @@ void Raspimouse::estimate_odometry(double & x, double & y, double & theta)
 
   x += linear_velocity_ * cos(theta) * dt.nanoseconds() / 1e9;
   y += linear_velocity_ * sin(theta) * dt.nanoseconds() / 1e9;
-  // theta += angular_velocity_ * dt.nanoseconds() / 1e9;
+  //theta += angular_velocity_ * dt.nanoseconds() / 1e9;
   theta += angular_velocity_z_ * dt.nanoseconds() / 1e9;
-
+  deg_z = theta * 180 / M_PI;
+  if(imu_i == 1000) {
+  RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
+  }
 }
 
 }  // namespace raspimouse
