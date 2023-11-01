@@ -17,7 +17,6 @@ target_link_libraries(imu_calibration_data
 )
 
 ament_auto_package(
-  INSTALL_TO_SHARE	
-  config
+  INSTALL_TO_SHARE
   launch
 )
