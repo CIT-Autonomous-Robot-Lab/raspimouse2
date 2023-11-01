@@ -19,6 +19,7 @@ class imu_c_data : public rclcpp::Node
     int imu_i;
     double sum;
     bool imuBiasCalibration;
+    double calibration_yaw;
     imu_c_data();
 
   protected:

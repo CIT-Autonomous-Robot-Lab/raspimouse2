@@ -34,7 +34,7 @@ def generate_launch_description():
             output='screen')
     ])
 
-    imu_node = LifecycleNode(
+    imu_c_data_node = LifecycleNode(
             namespace='',
             name = 'rt_usb_9axisimu_driver',
             package='rt_usb_9axisimu_driver',
@@ -42,16 +42,16 @@ def generate_launch_description():
             output='screen'
     )
 
-    emit_configuring_event_imu = EmitEvent(
+    emit_configuring_event_imu_c_data = EmitEvent(
         event=lifecycle.ChangeState(
-            lifecycle_node_matcher=matches_action(imu_node),
+            lifecycle_node_matcher=matches_action(imu_c_data_node),
             transition_id=Transition.TRANSITION_CONFIGURE,
         )
     )
 
-    emit_activating_event_imu = EmitEvent(
+    emit_activating_event_imu_c_data = EmitEvent(
         event=lifecycle.ChangeState(
-            lifecycle_node_matcher=matches_action(imu_node),
+            lifecycle_node_matcher=matches_action(imu_c_data_node),
             transition_id=Transition.TRANSITION_ACTIVATE,
         )
     )
@@ -61,20 +61,20 @@ def generate_launch_description():
         event=Shutdown()
     )
 
-    register_activating_transition_imu = RegisterEventHandler(
+    register_activating_transition_imu_c_data = RegisterEventHandler(
         OnStateTransition(
-            target_lifecycle_node=imu_node,
+            target_lifecycle_node=imu_c_data_node,
             goal_state='inactive',
             entities=[
-                 emit_activating_event_imu
+                 emit_activating_event_imu_c_data
 
             ],
         )
     )
 
-    register_shutting_down_transition_imu = RegisterEventHandler(
+    register_shutting_down_transition_imu_c_data = RegisterEventHandler(
         OnStateTransition(
-            target_lifecycle_node=imu_node,
+            target_lifecycle_node=imu_c_data_node,
             goal_state='finalized',
             entities=[
                 emit_shutdown_event
@@ -85,11 +85,11 @@ def generate_launch_description():
     
     ld = LaunchDescription()
     ld.add_action(launch_node)
-    ld.add_action(imu_node)
-    ld.add_action(emit_configuring_event_imu)
-    ld.add_action(emit_activating_event_imu)
-    ld.add_action(register_activating_transition_imu)
-    ld.add_action(register_shutting_down_transition_imu)
+    ld.add_action(imu_c_data_node)
+    ld.add_action(emit_configuring_event_imu_c_data)
+    ld.add_action(emit_activating_event_imu_c_data)
+    ld.add_action(register_activating_transition_imu_c_data)
+    ld.add_action(register_shutting_down_transition_imu_c_data)
 
 
     return ld
