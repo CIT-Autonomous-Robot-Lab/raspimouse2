@@ -102,7 +102,7 @@ private:
   int imu_i;
   double sum;
   double deg_z;
-  bool imuBiasCalibration;
+  double imu_calibration_yaw;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
 

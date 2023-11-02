@@ -46,6 +46,7 @@ constexpr auto WHEEL_TREAD_PARAM = "wheel_tread";
 constexpr auto PULSES_PER_REVOLUTION_PARAM = "pulses_per_revolution";
 constexpr auto INIT_MOTOR_POWER_PARAM = "initial_motor_power";
 
+constexpr auto IMU_CALIBRATION_YAW_PARAM = "imu_calibration_yaw";
 constexpr auto ODOM_FRAME_ID_PARAM = "odom_frame_id";
 constexpr auto ODOM_CHILD_FRAME_ID_PARAM = "odom_child_frame_id";
 constexpr auto ODOM_FRAME_PREFIX_PARAM = "odom_frame_prefix";
@@ -74,7 +75,7 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   imu_i(0),
   sum(0),
   deg_z(0),
-  imuBiasCalibration(true)	
+  imu_calibration_yaw(0)
 {
   // No construction necessary (node is uninitialised)
 }
@@ -94,6 +95,8 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   angular_velocity_ = 0;
   last_odom_time_ = now();
 
+  declare_parameter(IMU_CALIBRATION_YAW_PARAM, 0.0);
+  imu_calibration_yaw = get_parameter(IMU_CALIBRATION_YAW_PARAM).get_value<double>();
   declare_parameter(ODOM_FRAME_ID_PARAM, "odom");
   auto odom_frame_id = get_parameter(ODOM_FRAME_ID_PARAM).get_value<std::string>();
   declare_parameter(ODOM_CHILD_FRAME_ID_PARAM, "base_footprint");
@@ -333,20 +336,9 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
     return;
   }
 
-  //yaw軸方向の角速度を出力 
-  // RCLCPP_INFO(get_logger(), "Angular Velocity ( z): %.10f", msg->angular_velocity.z);
-  if (imuBiasCalibration) {
-    sum = sum + msg->angular_velocity.z;
-    imu_i++;
-    angular_velocity_z_ave = sum / imu_i;
-    RCLCPP_INFO(get_logger(), "キャリブレーション中 %d : 1000", imu_i);
-    if(imu_i == 1000) {
-	    RCLCPP_INFO(get_logger(), "キャリブレーション終了");
-	    imuBiasCalibration = false;
-    }
-  }
 
- msg->angular_velocity.z -= angular_velocity_z_ave;
+ msg->angular_velocity.z -= imu_calibration_yaw;
+
  msg->angular_velocity.z = msg->angular_velocity.z * -1;
  //if(imu_i == 1000) {
  //RCLCPP_INFO(get_logger(), "ave : %.10f", angular_velocity_z_ave);
@@ -665,9 +657,9 @@ void Raspimouse::estimate_odometry(double & x, double & y, double & theta)
   //theta += angular_velocity_ * dt.nanoseconds() / 1e9;
   theta += angular_velocity_z_ * dt.nanoseconds() / 1e9;
   deg_z = theta * 180 / M_PI;
-  if(imu_i == 1000) {
+  //if(imu_i == 1000) {
   RCLCPP_INFO(get_logger(), "deg ( z): %.10f", deg_z);
-  }
+  //}
 }
 
 }  // namespace raspimouse
