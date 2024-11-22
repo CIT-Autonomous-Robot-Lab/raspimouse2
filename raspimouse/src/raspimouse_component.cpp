@@ -75,7 +75,11 @@ Raspimouse::Raspimouse(const rclcpp::NodeOptions & options)
   imu_i(0),
   sum(0),
   deg_z(0),
-  imu_calibration_yaw(0)
+  imu_calibration_yaw(0), 
+  last_imu_sec_(0.), 
+  last_imu_nanosec_(0.), 
+  imu_sampling_time_(0.), 
+  init_imu_(false)
 {
   // No construction necessary (node is uninitialised)
 }
@@ -133,8 +137,10 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   
   // Timer for providing the odometry data
   declare_parameter(ODOM_HZ_PARAM, 100.0);
+  get_parameter(ODOM_HZ_PARAM, odom_hz_);
   std::chrono::milliseconds odom_duration{static_cast<int64_t>(
-      1000.0 / get_parameter(ODOM_HZ_PARAM).get_value<double>())};
+      //1000.0 / get_parameter(ODOM_HZ_PARAM).get_value<double>())};
+      1000.0 / odom_hz_)};
   odom_timer_ = create_wall_timer(odom_duration, std::bind(&Raspimouse::publish_odometry, this));
   // Don't actually start publishing odometry data until activated
   odom_timer_->cancel();
@@ -145,7 +151,7 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
 
   // Subscriber for imu data
   imu_data_raw_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-    "imu/data_raw", 1,
+    "imu/data_raw", 10,
     [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
       imuDataCallback(msg);
     });
@@ -162,6 +168,8 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   // Publisher for light sensors
   light_sensors_pub_ = this->create_publisher<raspimouse_msgs::msg::LightSensors>(
     "light_sensors", 10);
+  distance_from_encoder_pub_ = this->create_publisher<std_msgs::msg::Float32>(
+          "distance/encoder, 10");
 
   // Timer for publishing switch information
   declare_parameter(SWITCHES_HZ_PARAM, 10.0);
@@ -331,15 +339,38 @@ CallbackReturn Raspimouse::on_shutdown(const rclcpp_lifecycle::State &)
 //imuDataCallback
 void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
+  msg->angular_velocity.z -= imu_calibration_yaw;
+  angular_velocity_z_ = msg->angular_velocity.z;
   if (!msg) {
     RCLCPP_INFO(get_logger(), "IMU data not received.");
     return;
   }
+  if(!init_imu_){
+    init_imu_ = true;
+    last_imu_nanosec_ = msg->header.stamp.nanosec;
+    last_imu_sec_ = msg->header.stamp.sec;
+  }else{
+    double nanosec = msg->header.stamp.nanosec;
+    double sec = msg->header.stamp.sec;
+    double sec_diff = sec - last_imu_sec_;
+    double nanosec_diff = (nanosec - last_imu_nanosec_)*1e-9;
+    imu_sampling_time_ = nanosec_diff + sec_diff;
+
+    // double hz = 1 / time_diff;
+    last_imu_sec_ = sec;
+    last_imu_nanosec_ = nanosec;
+    odom_theta_ += angular_velocity_z_ * imu_sampling_time_;
+    //RCLCPP_INFO(this->get_logger(), "dt: %f, (x, y, z): (%f, %f, %f)", 
+    //        imu_sampling_time_, msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+    //odom_theta_ += angular_velocity_z_ / 200.;
+    
+    //deg_z = odom_theta_ * 180. / M_PI;
+    //RCLCPP_INFO(get_logger(), "Use IMU and Pulse. distasce_deg ( z): %.10f", deg_z);
+    //RCLCPP_INFO(this->get_logger(), "Time Diff: %f", time_diff);
+  }
 
 
- msg->angular_velocity.z -= imu_calibration_yaw;
-
- msg->angular_velocity.z = msg->angular_velocity.z * -1;
+ // msg->angular_velocity.z = msg->angular_velocity.z * -1;
  //if(imu_i == 1000) {
  //RCLCPP_INFO(get_logger(), "ave : %.10f", angular_velocity_z_ave);
  //}
@@ -352,7 +383,7 @@ void Raspimouse::imuDataCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 	//	  imuBiasCalibration = false;
 	 // }
 
-  angular_velocity_z_ = msg->angular_velocity.z;
+
   //RCLCPP_INFO(get_logger(), "angular_velocity_z_ : %.10f", angular_velocity_z_);
 
 }
@@ -585,7 +616,7 @@ void Raspimouse::stop_motors()
 void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, double & theta)
 {
   const auto WHEEL_DIAMETER = get_parameter(WHEEL_DIAMETER_PARAM).get_value<double>();
-  const auto WHEEL_TREAD = get_parameter(WHEEL_TREAD_PARAM).get_value<double>();
+  //const auto WHEEL_TREAD = get_parameter(WHEEL_TREAD_PARAM).get_value<double>();
   const auto PULSES_PER_REVOLUTION = get_parameter(PULSES_PER_REVOLUTION_PARAM).get_value<double>();
 
   auto one_revolution_distance_left = M_PI * WHEEL_DIAMETER *
@@ -636,10 +667,19 @@ void Raspimouse::calculate_odometry_from_pulse_counts(double & x, double & y, do
 
   
 
-  theta += atan2(right_distance - left_distance, WHEEL_TREAD);
+  //auto old_last_odom_time = last_odom_time_;
+  // last_odom_time_ = now();
+  // auto dt = last_odom_time_ - old_last_odom_time;
+  // RCLCPP_INFO(this->get_logger(), "sec: %f, nanosec: %ld", dt.seconds(), dt.nanoseconds());
+  // theta += angular_velocity_z_ * static_cast<double>(dt.nanoseconds() / 1e9);
+  // theta += angular_velocity_z_ * imu_sampling_time_;
+  theta = odom_theta_;
+  //RCLCPP_INFO(this->get_logger(), "nano sec: %ld", dt.nanoseconds());
+  //theta += atan2(right_distance - left_distance, WHEEL_TREAD);
   //theta += theta_z;
   //theta += angular_velocity_z_ /100;
-  RCLCPP_INFO(get_logger(), "distasce_deg ( z): %.10f", theta);
+  //deg_z = theta * 180. / M_PI;
+  //RCLCPP_INFO(get_logger(), "Use IMU and Pulse. distasce_deg ( z): %.10f", deg_z);
   x += average_distance * cos(theta);
   y += average_distance * sin(theta);
 

@@ -104,6 +104,13 @@ private:
   double deg_z;
   double imu_calibration_yaw;
 
+  double odom_hz_;
+
+  double last_imu_sec_;
+  double last_imu_nanosec_;
+  double imu_sampling_time_;
+  double init_imu_;
+
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_data_raw_sub_;
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_sub_;
@@ -118,6 +125,8 @@ private:
       raspimouse_msgs::msg::Switches>> switches_pub_;
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<
       raspimouse_msgs::msg::LightSensors>> light_sensors_pub_;
+  //std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<
+  //    std_msgs::msg::Float32>> distance_from_encoder_pub_;
   rclcpp::Subscription<raspimouse_msgs::msg::Leds>::SharedPtr leds_sub_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr buzzer_sub_;
   rclcpp::TimerBase::SharedPtr switches_timer_;
