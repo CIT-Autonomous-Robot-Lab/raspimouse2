@@ -151,7 +151,7 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
 
   // Subscriber for imu data
   imu_data_raw_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-    "imu/data_raw", 10,
+    "imu/data_raw", 20,
     [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
       imuDataCallback(msg);
     });
@@ -168,8 +168,6 @@ CallbackReturn Raspimouse::on_configure(const rclcpp_lifecycle::State &)
   // Publisher for light sensors
   light_sensors_pub_ = this->create_publisher<raspimouse_msgs::msg::LightSensors>(
     "light_sensors", 10);
-  distance_from_encoder_pub_ = this->create_publisher<std_msgs::msg::Float32>(
-          "distance/encoder, 10");
 
   // Timer for publishing switch information
   declare_parameter(SWITCHES_HZ_PARAM, 10.0);

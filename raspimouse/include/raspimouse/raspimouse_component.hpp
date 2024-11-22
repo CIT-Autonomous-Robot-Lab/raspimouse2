@@ -125,8 +125,6 @@ private:
       raspimouse_msgs::msg::Switches>> switches_pub_;
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<
       raspimouse_msgs::msg::LightSensors>> light_sensors_pub_;
-  //std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<
-  //    std_msgs::msg::Float32>> distance_from_encoder_pub_;
   rclcpp::Subscription<raspimouse_msgs::msg::Leds>::SharedPtr leds_sub_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr buzzer_sub_;
   rclcpp::TimerBase::SharedPtr switches_timer_;
